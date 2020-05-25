@@ -7,7 +7,9 @@
         "disk_size": "40000",
         "memory": "2048M",
         "boot_wait": "45s",
-        "headless": "false"
+        "headless": "false",
+        "acceleration": "kvm",
+        "kube_version": "v1.18.3",
     },
 
     "builders": [
@@ -16,24 +18,30 @@
             "iso_url": "https://{{user `flatcar_channel` }}.release.flatcar-linux.net/amd64-usr/current/flatcar_production_iso_image.iso",
             "iso_checksum": "{{ user `iso_checksum` }}",
             "iso_checksum_type": "{{ user `iso_checksum_type` }}",
+            "disk_image": false,
             "output_directory": "builds",
             "shutdown_command": "sudo shutdown now",
             "disk_size": "{{ user `disk_size` }}",
             "format": "qcow2",
-            "accelerator": "kvm",
+            "vnc_bind_address": "0.0.0.0",
+            "vnc_use_password": true,
+            "accelerator": "{{ user `acceleration` }}",
             "vm_name": "flatcar-linux-{{user `flatcar_channel` }}.qcow2",
             "boot_wait": "{{user `boot_wait` }}",
             "ssh_username": "core",
             "ssh_password": "packer",
+            "ssh_timeout": "5m",
+            "pause_before_connecting": "2m",
             "headless": "{{ user `headless` }}",
             "boot_command": [
-                "sudo passwd core<enter><wait>",
-                "packer<enter>",
-                "packer<enter>",
+                "sudo passwd core<enter><wait><wait><wait><wait><wait>",
+                "packer<enter><wait><wait>",
+                "packer<enter><wait><wait>",
                 "sudo systemctl start sshd.service<enter>"
             ],
             "qemuargs": [
-                [ "-m", "{{user `memory` }}" ]
+                [ "-m", "{{user `memory` }}" ],
+                [ "-fw_cfg", "name=opt/org.flatcar-linux/config,file=boot.ign" ]
             ]
         }
     ],
@@ -49,15 +57,28 @@
             "inline": [
                 "sudo flatcar-install -d /dev/vda -C {{ user `flatcar_channel` }} -i /tmp/ignition.json"
             ]
-        }
-    ],
-
-    "post-processors": [
-        {
-            "type": "vagrant",
-            "keep_input_artifact": true,
-            "output": "builds/flatcar-{{user `flatcar_channel`}}-{{user `flatcar_version`}}-{{.Provider}}.box",
-            "vagrantfile_template": "Vagrantfile.template"
-        }
+        },
+    	{
+      	     "type": "ansible",
+             "playbook_file": "./kubespray/cluster.yml",
+             "ansible_env_vars": [ "ANSIBLE_HOST_KEY_CHECKING=False", "ANSIBLE_CONFIG=./kubespray/ansible.cfg" ],
+             "groups": [ "kube-master", "etcd", "kube-node", "k8s-cluster" ],
+             "roles_path": "./kubespray/roles/",
+             "inventory_directory": "./kubespray/inventory/sample/",
+             "keep_inventory_file": true,
+             "user": "core",
+             "extra_arguments": [
+               "-v", "-b",
+               "-e", "ip=10.0.2.15",
+               "-e", "kube_version={{ user `kube_version` }}",
+               "-e", "ingress_nginx_enabled=True",
+               "-e", "local_release_dir='/root/releases'",
+               "-e", "helm_enabled=True",
+               "-e", "ignore_assert_errors=True",
+               "-e", "bootstrap_os=flatcar",
+               "--private-key", "unsec_priv_key",
+               "--tags", "always,bootstrap-os,preinstall,docker,download"
+             ]
+         }
     ]
 }

@@ -32,6 +32,11 @@ $ make flatcar-linux RELEASE=stable VERSION=1632.3.0
 $ make flatcar-linux HEADLESS=true
 ```
 
+### Building in headless mode with disabled hardware acceleration (for example inside vm and without kvm support in linux kernel)
+```
+$ make flatcar-linux HEADLESS=true ACCELERATION=none BOOT_WAIT=240s
+```
+
 ### Other make targets
 
 Delete builds:
@@ -55,4 +60,3 @@ $ vagrant up --provider=libvirt
 ## Other works
 
 This repository is based on other works such as https://github.com/dyson/packer-qemu-coreos-container-linux or https://github.com/bfraser/packer-coreos-qemu .
-
