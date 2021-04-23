@@ -31,7 +31,7 @@ builds/flatcar-linux-$(RELEASE).qcow2:
 		-var 'boot_wait=$(BOOT_WAIT)' \
 		-var 'headless=$(HEADLESS)' \
 		-var 'acceleration=$(ACCELERATION)' \
-		flatcar-linux.json
+		flatcar-linux-kubespray-pre-pull.hcl
 
 clean: cache-clean ct-clean
 	rm -rf builds unsec_priv_key_make unsec_priv_key_make.pub || true
